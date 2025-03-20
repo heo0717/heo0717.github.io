@@ -1,9 +1,11 @@
 # main links
 main:
 
-  - title: "portfolio"
+  - title: "portfolio ⓐ"
     url: /portfolio/
-  - title: "deep learning"
+  - title: "portfolio ⓑ"
+    url: /portfolio_b/
+  - title: "coding"
     url: /coding/
 
   # - title: "Quick-Start Guide"
