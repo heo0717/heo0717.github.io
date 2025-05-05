@@ -1,6 +1,6 @@
 ---
 layout: archive
-title: " CHAPTER 1: Dynamic Programming "
+title: " Dynamic Programming "
 permalink: /coding/deeplearning/dp/ 
 author_profile: true
 math: true

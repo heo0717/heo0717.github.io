@@ -1,6 +1,6 @@
 ---
 layout: single
-title: " CHAPTER 1: Bellman's equation "
+title: " Bellman's equation "
 permalink: /coding/deeplearning/bellman/
 author_profile: true
 math: true
