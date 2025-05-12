@@ -1,7 +1,7 @@
 ---
 layout: archive
 title: " Monte Carlo Method "
-permalink: /coding/deeplearning/TD/ 
+permalink: /coding/deeplearning/TDD/ 
 author_profile: true
 math: true
 ---
