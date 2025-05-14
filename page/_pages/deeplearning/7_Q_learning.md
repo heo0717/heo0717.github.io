@@ -324,7 +324,7 @@ $$
 
 - 시그모이드 함수 sigmoid  
 
-    데이터를 S자 곡선 형태로 압축  **F.sigmoid()**
+    데이터를 S자 곡선 형태로 압축  **F.sigmoid()**  
 $$
 y = \frac{1}{1 + e^{-x}}
 $$
@@ -515,10 +515,215 @@ for i in range(iters):
 SGD는 _확률적 경사하강법_ 이라는 최적화 기법 구현. 매개변수를 기울기 방향으로 lr배만큼 갱신. 
 (확률적 경사하강법이란 확률적 즉, 무작위 적으로 데이터를 선택하여 경사 하강법을 수행하는 기법으로 딥러닝에서 매우 흔히 쓰이는 최적화 기법)
 
+---
+
 ### 4. Q러닝과 신경망
 
 다시한번 복습하자면 TD에서 배운 SARSA는 현재 상태에서 행동을 선택하고 그에 대한 보상을 받은 후 그 다음의 상태와 그때의 행동까지를 구해서 현재 상태의 Q함수를 업데이트이며 On-poicy이다.  
-Q러닝은 SARSA의 off-policy 버전으로 생각할 수 있고, 대신 보정을 따로 하지 않고 실제 선택한 행동을 기준으로 업데이트하는 SARSA와 달리 가장 좋은 Q값을 만드는 행동, 즉 최적의 행동으로만 업데이트를 한다는 차이점이 있다. 
+Q러닝은 SARSA의 off-policy 버전으로 생각할 수 있다. 대신 보정을 따로 하지 않고, 실제 선택한 행동을 기준으로 업데이트하는 SARSA와 달리 가장 좋은 Q값을 만드는 행동 즉 최적의 행동으로만 업데이트를 한다는 차이점이 있다. 
 
 ⑴ 신경망 전처리  
 
+- 원핫벡터 one-hot vector  
+
+신경망에서 범주형 데이터를 처리할 때는 원핫벡터로 변환하는 것이 일반적.  
+
+ex )  여러 원소 중 하나만 1이고 나머지는 모두 0인 벡터
+S -> (1, 0, 0)  
+M -> (0, 1, 0)  
+L -> (0, 0, 1)  
+
+현재 3 X 4 의 그리드월드는 (x,y) 좌표로 표현한다. 이는 연산가능한 수치가 아닌 범주형 데이터이며 아래는 이를 전처리하는 코드이다.  
+
+- Q함수 표현 신경망  
+```python
+import numpy as np
+
+def one_hot(state):
+    # 3×4 그리드 월드의 12차원 벡터 생성 - 0으로 초기화할
+    HEIGHT, WIDTH = 3, 4
+    vec = np.zeros(HEIGHT * WIDTH, dtype=np.float32)
+
+    y, x = state
+    idx = WIDTH * y + x
+    vec[idx] = 1.0
+
+    return vec[np.newaxis, :] #벡터에 차원을 추가
+
+state = (2, 0)
+x = one_shot(state) #state를 받아서 원핫벡터로 변환
+
+print(x.shape)
+print(x)
+```
+
+```python
+from dezero import Model
+import dezero.functions as F
+import dezero.layers as L
+
+class QNet(Model):
+    def __init__(self):
+        super().__init__()
+        self.l1 = L.Linear(100)     # 중간층의 크기
+        self.l2 = L.Linear(4)       # 행동의 크기 (가능한 행동의 개수)
+
+    def forward(self, x):
+        x = F.relu(self.l1(x))
+        x = self.l2(x)
+        return x
+
+qnet = QNet()
+
+state = (2, 0)
+
+# 원-핫 벡터로 변환
+state = one_hot(state)  
+qs = qnet(state)
+print(qs.shape)   # [출력 결과] (1, 4)
+
+```
+
+⑵ 신경망과 Q러닝
+
+- Q러닝
+
+$$
+Q'(S_t, A_t) = Q(S_t, A_t) + \alpha \left[ R_t + \gamma \max_a Q(S_{t+1}, a) - Q(S_t, A_t) \right]
+$$
+
+목표(스칼라값)
+$$
+T  ⇒ R_t + \gamma \max_a Q(S_{t+1}, a)
+$$
+
+$$
+Q'(S_t, A_t) = Q(S_t, A_t) + \alpha \left[T - Q(S_t, A_t) \right]
+$$
+
+
+```python
+import os, sys; sys.path.append(os.path.join(os.path.dirname(__file__), '..'))  # for importing the parent dirs
+import matplotlib.pyplot as plt
+import numpy as np
+from dezero import Model
+from dezero import optimizers
+import dezero.functions as F
+import dezero.layers as L
+from common.gridworld import GridWorld
+
+
+def one_hot(state):
+    HEIGHT, WIDTH = 3, 4
+    vec = np.zeros(HEIGHT * WIDTH, dtype=np.float32)
+    y, x = state
+    idx = WIDTH * y + x
+    vec[idx] = 1.0
+    return vec[np.newaxis, :]
+
+
+class QNet(Model):
+    def __init__(self):
+        super().__init__()
+        self.l1 = L.Linear(100)  # 중간층의 크기
+        self.l2 = L.Linear(4)    # 행동의 크기(가능한 행동의 개수)
+
+    def forward(self, x):
+        x = F.relu(self.l1(x))
+        x = self.l2(x)
+        return x
+
+
+class QLearningAgent:
+    def __init__(self):
+        self.gamma = 0.9
+        self.lr = 0.01
+        self.epsilon = 0.1
+        self.action_size = 4
+
+        self.qnet = QNet()                        # 신경망 초기화
+        self.optimizer = optimizers.SGD(self.lr)  # 옵티마이저 생성
+        self.optimizer.setup(self.qnet)           # 옵티마이저에 신경망 등록
+
+    def get_action(self, state_vec):
+        if np.random.rand() < self.epsilon:
+            return np.random.choice(self.action_size)
+        else:
+            qs = self.qnet(state_vec)
+            return qs.data.argmax()
+
+    def update(self, state, action, reward, next_state, done):
+        # 다음 상태에서 최대가 되는 Q 함수의 값(next_q) 계산
+        if done:  # 목표 상태에 도달
+            next_q = np.zeros(1)  # [0.]  # [0.] (목표 상태에서의 Q 함수는 항상 0)
+        else:     # 그 외 상태
+            next_qs = self.qnet(next_state)
+            next_q = next_qs.max(axis=1)
+            next_q.unchain()  # next_q를 역전파 대상에서 제외
+
+        # 목표
+        target = self.gamma * next_q + reward
+        # 현재 상태에서의 Q 함수 값(q) 계산
+        qs = self.qnet(state)
+        q = qs[:, action]
+        # 목표(target)와 q의 오차 계산
+        loss = F.mean_squared_error(target, q)
+
+        # 역전파 → 매개변수 갱신
+        self.qnet.cleargrads()
+        loss.backward()
+        self.optimizer.update()
+
+        return loss.data
+
+
+env = GridWorld()
+agent = QLearningAgent()
+
+episodes = 1000  # 에피소드 수
+loss_history = []
+
+for episode in range(episodes):
+    state = env.reset()
+    state = one_hot(state)
+    total_loss, cnt = 0, 0
+    done = False
+
+    while not done:
+        action = agent.get_action(state)
+        next_state, reward, done = env.step(action)
+        next_state = one_hot(next_state)
+
+        loss = agent.update(state, action, reward, next_state, done)
+        total_loss += loss
+        cnt += 1
+        state = next_state
+
+    average_loss = total_loss / cnt
+    loss_history.append(average_loss)
+
+
+# [그림 7-14] 에피소드별 손실 추이
+plt.xlabel('episode')
+plt.ylabel('loss')
+plt.plot(range(len(loss_history)), loss_history)
+plt.show()
+
+# [그림 7-15] 신경망을 이용한 Q 러닝으로 얻은 Q 함수와 정책
+Q = {}
+for state in env.states():
+    for action in env.action_space:
+        q = agent.qnet(one_hot(state))[:, action]
+        Q[state, action] = float(q.data)
+env.render_q(Q)
+```
+
+- 에피소드별 평균 손실  
+<div style="display: flex; gap: 10px; margin-bottom: 30px;">
+  <img src="/assets/images/Q3_loss.png.png" alt="Q3" width="500">
+</div>
+
+<div style="display: flex; gap: 10px; margin-bottom: 30px;">
+  <img src="/assets/images/Q4.png" alt="Q4" width="500">
+  <img src="/assets/images/Q5.png" alt="Q5" width="500">
+</div>

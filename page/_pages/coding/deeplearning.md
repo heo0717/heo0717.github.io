@@ -20,3 +20,5 @@ author_profile: true
 [chapter 8. DQN](/coding/deeplearning/DPN/)
 
 [chapter 9. 정책경사법](/coding/deeplearning/9/)
+
+[chapter 10. more](/coding/deeplearning/more/)
