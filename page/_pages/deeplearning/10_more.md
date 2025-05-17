@@ -49,8 +49,8 @@ INDEX
 모델 학습 (행동 O)  -> World Models, MBVE   
 
 모델 프리)  
-가치 기반 기법  -> DQN
-정책 기반 기법  -> REINFORCE 
+Q러닝 계열열  -> DQN
+정책 기반 기법  -> 정책경사법
 
 ---
 

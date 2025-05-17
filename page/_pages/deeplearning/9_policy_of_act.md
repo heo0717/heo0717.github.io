@@ -326,7 +326,7 @@ plot_total_reward(reward_history)
 --- 
 
 [정책경사법 (Policy Gradient)]  
-├── REINFORCE (Monte Carlo 기반)  
+├── REINFORCE  
 ├── Actor-Critic  
 │   ├── Advantage Actor-Critic (A2C)  
 │   └── A3C, PPO 등...  
