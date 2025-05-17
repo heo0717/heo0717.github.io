@@ -244,9 +244,9 @@ class Agent:
         self.optimizer.setup(self.pi) # 정책 파라미터 등록 
 
     def get_action(self, state):
-        state = state[np.newaxis, :]  # 차원 맞추기기
+        state = state[np.newaxis, :]  # 차원 맞추기
         probs = self.pi(state)        # 순전파 수행, 정책신경망에 상태를 입력하여 확률을 출력
-        probs = probs[0] # 확률을 1차원으로 정리리
+        probs = probs[0] # 확률을 1차원으로 정리
         action = np.random.choice(len(probs), p=probs.data)  # 확률적 행동 선택
         return action, probs[action]  # 선택된 행동과 확률 반환
 
@@ -330,10 +330,10 @@ plot_total_reward(reward_history)
 --- 
 
 [정책경사법 (Policy Gradient)]
-├── REINFORCE ← 지금 네 코드 (Monte Carlo 기반)
-├── Actor-Critic
-│   ├── Advantage Actor-Critic (A2C)
-│   └── A3C, PPO 등...
+├── REINFORCE (Monte Carlo 기반)  
+├── Actor-Critic  
+│   ├── Advantage Actor-Critic (A2C)  
+│   └── A3C, PPO 등...  
 
 
 ### 2. REINFORCE 알고리즘
@@ -557,10 +557,16 @@ $$
 
 Φ_𝑡​는 각 기법마다 달라지는 보상의 척도이자 기여도 계수  
 
-1. $ \Phi_t = G(\tau) $          # 가장 단순한 정책 경사법  
+1. $$
+\Phi_t = G(\tau) $$          # 가장 단순한 정책 경사법  
 
-2. $ \Phi_t = G_t $           # REINFORCE  
+2. $$
+\Phi_t = G_t$$           # REINFORCE  
 
-3. $ \Phi_t = G_t - b(S_t) $      # 베이스라인을 적용한 REINFORCE  
+3. $$
+\Phi_t = G_t - b(S_t) 
+$$      # 베이스라인을 적용한 REINFORCE  
 
-4. $ \Phi_t = R_t + \gamma V(S_{t+1}) - V(S_t) $ # 행위자–비평자 (Actor–Critic)  
+4. $$
+\Phi_t = R_t + \gamma V(S_{t+1}) - V(S_t) 
+$$ # 행위자–비평자 (Actor–Critic)  
